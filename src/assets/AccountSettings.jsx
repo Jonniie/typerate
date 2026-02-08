@@ -215,7 +215,7 @@ export default function AccountSettings(props) {
                                 <label for="modeselect" className='--settings-panel-option' 
                                 onMouseEnter={props.revealOptionInfo} onMouseLeave={props.revealOptionInfo} opacity="0">Enable saving options to account:</label>
                                 <div class="checkbox-wrapper-14">
-                                    <input type="checkbox" class="switch" checked={false} onClick={() => {}}/>
+                                    <input type="checkbox" class="switch" checked={false} onChange={() => {}}/>
                                 </div>
                             </div>
                             <div style={{display: 'flex'}}>

@@ -11,7 +11,7 @@ import { Link, Routes, Route, useLocation } from 'react-router-dom'
 import { forceKeyboardLayout, checkForNewBadges } from './assets/utils.js'
 import wrongpng from './assets/images/wrong.png'
 import incorrectsound from './assets/sounds/incorrect.mp3'
-import { getUser, logout, searchUsers, updateBadges, updateStats } from './api/user'
+import { getUser, logout, searchUsers, updateBadges, updateStats, updateSettings } from './api/user'
 import { UserContext } from './assets/context/userContext'
 
 let WORDS = new Array(10).fill("loading");
@@ -23,8 +23,9 @@ let WORDS = new Array(10).fill("loading");
 let pressedKeys = []
 let pressedKeysDisplay = []
 let tildaDown = false, tildaTermination = false
+let onTildaTerminate = null
 const NUM_OF_WORDS = 25;
-let restartKey = '`', changeKeyTimer;
+let restartKey = localStorage.getItem("stopKey") || '`', changeKeyTimer;
 
 const resetPressedKeys = () => pressedKeys = []; pressedKeysDisplay = []
 
@@ -46,6 +47,7 @@ const holdRestart = (practice = false) => {
             }
             if (timePassed === (practice ? 501 : 1001) && pressedKeys.includes(restartKey)) {
                 tildaTermination = true
+                if (onTildaTerminate) onTildaTerminate()
                 tildaDown = false
                 document.querySelector('.--main-hold-restart').style.backgroundImage = 'conic-gradient(transparent, transparent)'
                 clearInterval(timer)
@@ -127,6 +129,71 @@ const requestNewAnimation = async (target, first = false) => {
 
 const toBool = (str) => str === 'true' ? true : str === 'false' ? false : null
 
+// --- Backend settings sync helpers ---
+const DISPLAY_KEYS = ['theme', 'displayType', 'backgroundEffects', 'showKeys']
+const GAMEPLAY_KEYS = [
+    'keyboardLayout', 'completionKey', 'leisure', 'stopOnIncorrect',
+    'hideHeader', 'hideHeaderShowCounter', 'playSoundOnIncorrect',
+    'practiceMode', 'mode', 'stopKey'
+]
+const VALID_THEMES = ['dark-symposium', 'dark-zero', 'dark-starry', 'light-colorful', 'light-elegant', 'light-simple']
+const VALID_DISPLAY_TYPES = ['stacked', 'sequential', 'singular']
+const VALID_KEYBOARD_LAYOUTS = ['QWERTY', 'QWERTZ', 'AZERTY', 'DVORAK', 'COLEMAK', 'DEFAULT']
+const VALID_COMPLETION_KEYS = ['space', 'enter', 'auto']
+
+// Convert nested backend settings → flat frontend settings (skips invalid values)
+const settingsFromBackend = (backend) => {
+    if (!backend) return null
+    const flat = {}
+    if (backend.display) {
+        for (const key of DISPLAY_KEYS) {
+            const val = backend.display[key]
+            if (val == null) continue
+            if (key === 'theme' && !VALID_THEMES.includes(val)) continue
+            if (key === 'displayType' && !VALID_DISPLAY_TYPES.includes(val)) continue
+            flat[key] = val
+        }
+    }
+    if (backend.gameplay) {
+        for (const key of GAMEPLAY_KEYS) {
+            const val = backend.gameplay[key]
+            if (val == null) continue
+            if (key === 'mode') { flat._backendModeName = val; continue }
+            if (key === 'keyboardLayout' && !VALID_KEYBOARD_LAYOUTS.includes(val)) continue
+            if (key === 'completionKey' && !VALID_COMPLETION_KEYS.includes(val)) continue
+            flat[key] = val
+        }
+    }
+    return flat
+}
+
+// Build a backend-shaped PATCH from only the keys that changed
+const buildSettingsPatch = (prev, next) => {
+    const patch = {}
+    for (const key of DISPLAY_KEYS) {
+        if (prev[key] !== next[key]) {
+            if (!patch.display) patch.display = {}
+            patch.display[key] = next[key]
+        }
+    }
+    for (const key of GAMEPLAY_KEYS) {
+        if (key === 'mode') {
+            const prevName = prev.mode?.name
+            const nextName = next.mode?.name
+            if (prevName !== nextName) {
+                if (!patch.gameplay) patch.gameplay = {}
+                patch.gameplay.mode = nextName
+            }
+        } else if (prev[key] !== next[key]) {
+            if (!patch.gameplay) patch.gameplay = {}
+            patch.gameplay[key] = next[key]
+        }
+    }
+    return (patch.display || patch.gameplay) ? patch : null
+}
+
+let settingsSaveTimer = null
+
 function App() {
     const { user, updateUser } = React.useContext(UserContext)
 
@@ -146,7 +213,6 @@ function App() {
         key2: "",
         timeAtFlag: 0
     })
-    const [stopKey, setStopKey] = React.useState(restartKey)
     const [input, setInput] = useState('') //State for controlled input
     const [correct, setCorrect] = useState(true) //State that determines wheter input is matching given word or not
     const [wordStorage,setWordStorage] = useState([]) //State that stores words to precisely calculate WPM and CPM, along with potential future uses
@@ -159,16 +225,16 @@ function App() {
         displayType:           localStorage.getItem("displayType")            || "stacked",
         theme:                 localStorage.getItem("theme")                  || 'dark-symposium',
         keyboardLayout:        localStorage.getItem("keyboardLayout")         || 'DEFAULT',
-        completionKey:         localStorage.getItem("completionKey")          || 'space', 
-        leisure:               localStorage.getItem("leisure")               === undefined ? true  : toBool(localStorage.getItem("leisure")),
-        backgroundEffects:     localStorage.getItem("backgroundEffects")     === undefined ? true  : toBool(localStorage.getItem("backgroundEffects")),
-        stopOnIncorrect:       localStorage.getItem("stopOnIncorrect")       === undefined ? false : toBool(localStorage.getItem("stopOnIncorrect")),
-        hideHeader:            localStorage.getItem("hideHeader")            === undefined ? true  : toBool(localStorage.getItem("hideHeader")),
-        hideHeaderShowCounter: localStorage.getItem("hideHeaderShowCounter") === undefined ? true  : toBool(localStorage.getItem("hideHeaderShowCounter")),
-        playSoundOnIncorrect:  localStorage.getItem("playSoundOnIncorrect")  === undefined ? false : toBool(localStorage.getItem("playSoundOnIncorrect")),
-        showKeys:              localStorage.getItem("showKeys")              === undefined ? true : toBool(localStorage.getItem("showKeys")),
+        completionKey:         localStorage.getItem("completionKey")          || 'space',
+        stopKey:               localStorage.getItem("stopKey")                || '`',
+        leisure:               localStorage.getItem("leisure")               == null ? true  : toBool(localStorage.getItem("leisure")),
+        backgroundEffects:     localStorage.getItem("backgroundEffects")     == null ? true  : toBool(localStorage.getItem("backgroundEffects")),
+        stopOnIncorrect:       localStorage.getItem("stopOnIncorrect")       == null ? false : toBool(localStorage.getItem("stopOnIncorrect")),
+        hideHeader:            localStorage.getItem("hideHeader")            == null ? true  : toBool(localStorage.getItem("hideHeader")),
+        hideHeaderShowCounter: localStorage.getItem("hideHeaderShowCounter") == null ? true  : toBool(localStorage.getItem("hideHeaderShowCounter")),
+        playSoundOnIncorrect:  localStorage.getItem("playSoundOnIncorrect")  == null ? false : toBool(localStorage.getItem("playSoundOnIncorrect")),
+        showKeys:              localStorage.getItem("showKeys")              == null ? true  : toBool(localStorage.getItem("showKeys")),
         practiceMode:          false,
-        useAccountSettings:    user.loggedin ? true : true, //CHANGE THIS
         mode: {
             name: "engmed",
             loaded: true,
@@ -200,9 +266,18 @@ function App() {
         activated: false
     })
 
+    const [tildaSignal, setTildaSignal] = useState(0)
     const startedRef = React.useRef(started) //Reference to started state used for timer
     startedRef.current = started
+    const prevSettingsRef = React.useRef(null)
+    const skipNextSaveRef = React.useRef(false)
+    const backendSettingsAppliedRef = React.useRef(false)
     let location = useLocation()
+
+    useEffect(() => {
+        onTildaTerminate = () => setTildaSignal(s => s + 1)
+        return () => { onTildaTerminate = null }
+    }, [])
 
     useEffect(() => {
         if (tildaTermination) {
@@ -213,7 +288,7 @@ function App() {
                 tildaTermination = false
             }
         }
-    }, [tildaTermination])
+    }, [tildaSignal])
 
     useEffect(() => {
         (async() => {
@@ -242,7 +317,7 @@ function App() {
 
     const setNewStopKey = (e) => {
         restartKey = e.key
-        setStopKey(e.key)
+        setSettings(prev => ({ ...prev, stopKey: e.key }))
         window.removeEventListener("keydown", setNewStopKey)
     }
 
@@ -315,9 +390,62 @@ function App() {
     }, [settings.theme, settings.backgroundEffects, location])
 
     useEffect(() => {
+        if (user.loggedin && user.backendSettings && !backendSettingsAppliedRef.current) {
+            backendSettingsAppliedRef.current = true
+            const flat = settingsFromBackend(user.backendSettings)
+            const validKeyCount = flat ? Object.keys(flat).filter(k => k !== '_backendModeName').length : 0
+
+            if (validKeyCount > 0) {
+                skipNextSaveRef.current = true
+                setSettings(prev => {
+                    const merged = { ...prev }
+                    for (const key of Object.keys(flat)) {
+                        if (key === '_backendModeName') continue
+                        merged[key] = flat[key]
+                    }
+                    return merged
+                })
+                if (flat._backendModeName && flat._backendModeName !== settings.mode?.name) {
+                    changeMode(flat._backendModeName)
+                }
+            } else {
+                const emptyPrev = {}
+                for (const k of [...DISPLAY_KEYS, ...GAMEPLAY_KEYS]) {
+                    emptyPrev[k] = k === 'mode' ? { name: null } : null
+                }
+                const fullPatch = buildSettingsPatch(emptyPrev, settings)
+                if (fullPatch) updateSettings(fullPatch)
+            }
+        }
+        if (!user.loggedin) backendSettingsAppliedRef.current = false
+    }, [user.loggedin, user.backendSettings])
+
+    useEffect(() => {
         for (let setting of Object.keys(settings)) {
             localStorage.setItem(setting, settings[setting])
         }
+
+        if (settings.stopKey && settings.stopKey !== restartKey) {
+            restartKey = settings.stopKey
+        }
+
+        if (skipNextSaveRef.current) {
+            skipNextSaveRef.current = false
+            prevSettingsRef.current = { ...settings }
+            return
+        }
+
+        if (user.loggedin && prevSettingsRef.current) {
+            const patch = buildSettingsPatch(prevSettingsRef.current, settings)
+            if (patch) {
+                clearTimeout(settingsSaveTimer)
+                settingsSaveTimer = setTimeout(() => {
+                    updateSettings(patch)
+                }, 800)
+            }
+        }
+
+        prevSettingsRef.current = { ...settings }
     }, [settings])
 
     useEffect(() => {
@@ -828,7 +956,7 @@ function App() {
                                     setChartType={setChartType}
                                     settings={settings}
                                     changeStopKey={changeStopKey}
-                                    stopKey={stopKey}
+                                    stopKey={settings.stopKey}
                                 />
                             }
                             <Backgrounds theme={settings.theme} backgroundEffects={settings.backgroundEffects}/>

@@ -15,7 +15,7 @@ function Settings(props) {
     const { user, updateUser } = React.useContext(UserContext) 
 
     const [userData, setUserData] = React.useState({wpm: 0, cpm: 0, accuracy: 0})
-    const [dangerPrompt, setDangerPrompt] = React.useState({activated: false, action: ''})
+    const [dangerPrompt, setDangerPrompt] = React.useState({activated: false, action: null})
     const [profileSettings, setProfileSettings] = React.useState({activated: false})
     const [activePanel, setActivePanel] = React.useState("general")
     const [targetedDetails, setTargetedDetails] = React.useState({active: false, user: {}})
@@ -310,7 +310,7 @@ function Settings(props) {
                                 <label for="modeselect" className='--settings-panel-option' 
                                 onMouseEnter={revealOptionInfo} onMouseLeave={revealOptionInfo} opacity="0">Background&nbsp;effects:</label>
                                 <div class="checkbox-wrapper-14">
-                                    <input type="checkbox" class="switch" checked={props.settings.backgroundEffects} onClick={() => toggleSwitch("backgroundEffects")}/>
+                                    <input type="checkbox" class="switch" checked={props.settings.backgroundEffects} onChange={() => toggleSwitch("backgroundEffects")}/>
                                 </div>
                             </div>
                             <div className='--settings-panel-option-div'>
@@ -318,7 +318,7 @@ function Settings(props) {
                                 <label for="modeselect" className='--settings-panel-option' 
                                 onMouseEnter={revealOptionInfo} onMouseLeave={revealOptionInfo} opacity="0">Show&nbsp;pressed&nbsp;keys:</label>
                                 <div class="checkbox-wrapper-14">
-                                    <input type="checkbox" class="switch" checked={props.settings.showKeys} onClick={() => toggleSwitch("showKeys")}/>
+                                    <input type="checkbox" class="switch" checked={props.settings.showKeys} onChange={() => toggleSwitch("showKeys")}/>
                                 </div>
                             </div>
                         </fieldset>
@@ -387,7 +387,7 @@ function Settings(props) {
                                     Acceptance&nbsp;leisure:
                                 </label>
                                 <div class="checkbox-wrapper-14">
-                                    <input type="checkbox" class="switch" checked={props.settings.leisure} onClick={() => toggleSwitch("leisure")}/>
+                                    <input type="checkbox" class="switch" checked={props.settings.leisure} onChange={() => toggleSwitch("leisure")}/>
                                 </div>
                             </div>
                             <div className='--settings-panel-option-div'>
@@ -410,7 +410,7 @@ function Settings(props) {
                                     Stop&nbsp;on&nbsp;incorrect:
                                 </label>
                                 <div class="checkbox-wrapper-14">
-                                    <input type="checkbox" class="switch" checked={props.settings.stopOnIncorrect} onClick={() => {props.setSettings(prev => ({...prev, stopOnIncorrect: !prev.stopOnIncorrect}))}}/>
+                                    <input type="checkbox" class="switch" checked={props.settings.stopOnIncorrect} onChange={() => {props.setSettings(prev => ({...prev, stopOnIncorrect: !prev.stopOnIncorrect}))}}/>
                                 </div>
                             </div>
                             <div className='--settings-panel-option-div'>
@@ -418,7 +418,7 @@ function Settings(props) {
                                 <label for="modeselect" className='--settings-panel-option' 
                                 onMouseEnter={revealOptionInfo} onMouseLeave={revealOptionInfo} opacity="0">Hide&nbsp;header&nbsp;during&nbsp;gameplay:</label>
                                 <div class="checkbox-wrapper-14">
-                                    <input type="checkbox" class="switch" checked={props.settings.hideHeader} onClick={() => toggleSwitch("hideHeader")}/>
+                                    <input type="checkbox" class="switch" checked={props.settings.hideHeader} onChange={() => toggleSwitch("hideHeader")}/>
                                 </div>
                             </div>
                             <div className='--settings-panel-option-div' style={{opacity: !props.settings.hideHeader && '0.4', pointerEvents: !props.settings.hideHeader && 'none'}}>
@@ -426,7 +426,7 @@ function Settings(props) {
                                 <label for="modeselect" className='--settings-panel-option' 
                                 onMouseEnter={revealOptionInfo} onMouseLeave={revealOptionInfo} opacity="0">Show&nbsp;counters&nbsp;during&nbsp;gameplay:</label>
                                 <div class="checkbox-wrapper-14">
-                                    <input type="checkbox" class="switch" checked={props.settings.hideHeaderShowCounter} onClick={() => toggleSwitch("hideHeaderShowCounter")}/>
+                                    <input type="checkbox" class="switch" checked={props.settings.hideHeaderShowCounter} onChange={() => toggleSwitch("hideHeaderShowCounter")}/>
                                 </div>
                             </div>
                             <div className='--settings-panel-option-div'>
@@ -490,7 +490,7 @@ function Settings(props) {
                                 <label for="modeselect" className='--settings-panel-option' 
                                 onMouseEnter={revealOptionInfo} onMouseLeave={revealOptionInfo}>Play&nbsp;sound&nbsp;on&nbsp;incorrect:</label>
                                 <div class="checkbox-wrapper-14">
-                                    <input type="checkbox" class="switch" checked={props.settings.playSoundOnIncorrect} onClick={() => toggleSwitch("playSoundOnIncorrect")}/>
+                                    <input type="checkbox" class="switch" checked={props.settings.playSoundOnIncorrect} onChange={() => toggleSwitch("playSoundOnIncorrect")}/>
                                 </div>
                             </div>
                             <div className='--settings-panel-option-div' style={{opacity: !user.loggedin && '0.4', pointerEvents: !user.loggedin && 'none'}}>
@@ -498,7 +498,7 @@ function Settings(props) {
                                 <label for="modeselect" className='--settings-panel-option' 
                                 onMouseEnter={revealOptionInfo} onMouseLeave={revealOptionInfo}>Practice&nbsp;mode:</label>
                                 <div class="checkbox-wrapper-14">
-                                    <input type="checkbox" class="switch" checked={user.loggedin ? props.settings.practiceMode : false} onClick={() => toggleSwitch("practiceMode")}/>
+                                    <input type="checkbox" class="switch" checked={user.loggedin ? props.settings.practiceMode : false} onChange={() => toggleSwitch("practiceMode")}/>
                                 </div>
                             </div>
                             <div className='--settings-panel-option-div' style={{paddingTop: '0.42rem', paddingBottom: '0.42rem'}}>

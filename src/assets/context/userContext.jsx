@@ -12,7 +12,9 @@ function UserContextProvider(props) {
             profilePicture: "default", 
             badges: [],
             frequentlyMissed: [],
-            missedCombinations: []}
+            missedCombinations: [],
+            backendSettings: null
+        }
     )
     const [protectedUser, setProtectedUser] = React.useState({
         email: ""
@@ -30,7 +32,8 @@ function UserContextProvider(props) {
                 profilePicture: res.profilePicture || "default",
                 badges: res.badges || [],
                 frequentlyMissed: res.frequentlyMissed || [],
-                missedCombinations: res.missedCombinations || []
+                missedCombinations: res.missedCombinations || [],
+                backendSettings: res.settings || null
         })
         } else {
             setUser({
@@ -40,7 +43,8 @@ function UserContextProvider(props) {
             profilePicture: "default",
             badges: [],
             frequentlyMissed: [],
-            missedCombinations: []
+            missedCombinations: [],
+            backendSettings: null
             })
         }    
     } 
